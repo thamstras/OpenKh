@@ -52,7 +52,7 @@ namespace OpenKh.Engine.Renderers
 
         private readonly ISpriteDrawing drawing;
         private readonly ISpriteTexture surface;
-        private Context _textContext;
+        private Context _childContext;
 
         public Sequence Sequence { get; }
 
@@ -68,10 +68,10 @@ namespace OpenKh.Engine.Renderers
 
         public bool Draw(IMessageRenderer msgRenderer, byte[] data, int animationGroupIndex, int frameIndex, float positionX, float positionY)
         {
-            _textContext = null;
+            _childContext = null;
             var isAnimationEnd = Draw(animationGroupIndex, frameIndex, positionX, positionY);
 
-            if (_textContext != null && msgRenderer != null && data != null)
+            if (_childContext != null && msgRenderer != null && data != null)
             {
                 const float UiTextScale = 0.75f;
                 var seqGroup = Sequence.AnimationGroups[animationGroupIndex];
@@ -85,13 +85,13 @@ namespace OpenKh.Engine.Renderers
                 msgRenderer.Draw(fakeTextDrawContext, data);
                 var width = (float)fakeTextDrawContext.Width;
 
-                var xPos = _textContext.PositionX - width / 2 + seqGroup.TextPositionX;
+                var xPos = _childContext.PositionX - width / 2 + seqGroup.TextPositionX;
                 msgRenderer.Draw(new DrawContext
                 {
                     xStart = xPos,
                     x = xPos,
-                    y = _textContext.PositionY + seqGroup.TextPositionY,
-                    Color = _textContext.Color,
+                    y = _childContext.PositionY + seqGroup.TextPositionY,
+                    Color = _childContext.Color,
                     Scale = textScale,
                     WidthMultiplier = 1.0f,
                 }, data);
@@ -218,10 +218,10 @@ namespace OpenKh.Engine.Renderers
 
             context.Color *= DebugSequenceRenderer.GetAnimationBlendColor(index);
 
-            if ((animation.Flags & Sequence.AttachTextFlag) != 0)
+            if ((animation.Flags & Sequence.CanHostChildFlag) != 0)
             {
-                if (_textContext == null)
-                    _textContext = context.Clone();
+                if (_childContext == null)
+                    _childContext = context.Clone();
             }
 
             // CALCULATE TRANSOFRMATIONS AND INTERPOLATIONS
