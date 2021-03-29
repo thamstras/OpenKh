@@ -9,18 +9,21 @@ namespace OpenKh.Bbs
     public partial class Bbsa
     {
         protected static string[] KnownExtensions = new string[] {
-            "Arc", "Bin", "Tm2", "Pmo",
-            "Pam", "Pmp", "Pvd", "Bcd",
-            "Fep", "Frr", "Ead", "Ese",
-            "Lub", "Lad", "L2d", "Pst",
-            "Epd", "Olo", "Bep", "Txa",
-            "Aac", "Abc", "Scd", "Bsd",
-            "Seb", "Ctd", "Ecm", "Ept",
-            "Mss", "Nmd", "Ite", "Itb",
-            "Itc", "Bdd", "Bdc", "Ngd",
-            "Exb", "Gpd", "Exa", "Esd",
+            // NOTE: The order here is important. Do Not rearrange these.
+            "", "arc", "bin", "tm2",
+            "pmo", "pam", "pmp", "pvd",
+            "bcd", "fep", "frr", "ead",
+            "ese", "lub", "lad", "l2d",
+            "pst", "epd", "olo", "bep",
+            "txa", "aac", "abc", "scd",
+            "bsd", "seb", "ctd", "ecm",
+            "ept", "mss", "nmd", "ite",
+            "itb", "itc", "bdd", "bdc",
+            "ngd", "exb", "gpd", "exa",
+            "esd", "edp",
+
             "MTX", "INF", "COD", "CLU",
-            "PMF", "ESE", "PTX", ""
+            "PMF", "ESE", "PTX"
         };
 
         protected static Dictionary<uint, string> Paths = new Dictionary<uint, string>
@@ -205,7 +208,7 @@ namespace OpenKh.Bbs
             [Data] public int Version { get; set; }
             [Data] public short ArcDirectoryCount { get; set; }
             [Data] public short ArcRecordCount { get; set; }
-            [Data] public short ExtDirectoryCount { get; set; }
+            [Data] public short RsrcGroupCount { get; set; }
             [Data] public short ExtFileCount { get; set; }
             [Data] public int ArcRecordOffset { get; set; }
             [Data] public int ExtFileOffset { get; set; }
@@ -217,6 +220,7 @@ namespace OpenKh.Bbs
             [Data] public int Archive3Sector { get; set; }
             [Data] public int Archive4Sector { get; set; }
             public Partition<ArcDirectoryEntry>[] Partitions { get; set; }
+            public ResourceGroup[] ResourceGroups { get; set; }
         }
 
         protected class ArchivePartitionHeader
@@ -227,6 +231,33 @@ namespace OpenKh.Bbs
             [Data] public short LbaStartOffset { get; set; }
             [Data] public short UnknownOffset { get; set; }
             public Partition<ArchivePartitionEntry>[] Partitions { get; set; }
+        }
+
+        protected class ResourceGroup
+        {
+            [Data] public short Count { get; set; }
+            [Data] public short Offset { get; set; }
+            public DirectoryEntry[] Files { get; set; }
+
+            internal static ResourceGroup Read(Stream stream) =>
+                BinaryMapping.ReadObject<ResourceGroup>(stream);
+        }
+
+        private static void ReadResourceGroupFiles(IEnumerable<ResourceGroup> groups, Stream stream, int baseOffset)
+        {
+            stream.Position = baseOffset;
+            foreach (var group in groups)
+            {
+                stream.Position = baseOffset + group.Offset * 12;
+                var reader = new BinaryReader(stream);
+                group.Files = Enumerable.Range(0, group.Count)
+                    .Select(x => new DirectoryEntry
+                    {
+                        FileHash = reader.ReadUInt32(),
+                        Info = reader.ReadUInt32(),
+                        DirectoryHash = reader.ReadUInt32()
+                    }).ToArray();
+            }
         }
 
         protected class DirectoryEntry
@@ -244,15 +275,18 @@ namespace OpenKh.Bbs
         private const int LbaLength = 8;
         protected readonly Header _header;
         protected readonly ArchivePartitionHeader _header2;
-        protected readonly DirectoryEntry[] _directoryEntries;
+        //protected readonly DirectoryEntry[] _directoryEntries;
 
         protected Bbsa(Stream stream)
         {
             _header = BinaryMapping.ReadObject<Header>(stream, (int)stream.Position);
             _header.Partitions = ReadPartitions<ArcDirectoryEntry>(stream, 0x30, _header.ArcDirectoryCount);
+            _header.ResourceGroups = Enumerable.Range(0, _header.RsrcGroupCount)
+                .Select(x => ResourceGroup.Read(stream)).ToArray();
             ReadPartitionLba(_header.Partitions, stream, _header.ArcRecordOffset);
+            ReadResourceGroupFiles(_header.ResourceGroups, stream, _header.ExtFileOffset);
 
-            stream.Position = _header.ExtFileOffset;
+            /*stream.Position = _header.ExtFileOffset;
             var reader = new BinaryReader(stream);
             _directoryEntries = Enumerable.Range(0, _header.ExtFileCount)
                     .Select(x => new DirectoryEntry
@@ -260,7 +294,7 @@ namespace OpenKh.Bbs
                         FileHash = reader.ReadUInt32(),
                         Info = reader.ReadUInt32(),
                         DirectoryHash = reader.ReadUInt32()
-                    }).ToArray();
+                    }).ToArray();*/
 
             int header2Offset = _header.LinkFileSector * 0x800;
             stream.Position = header2Offset;
@@ -287,25 +321,36 @@ namespace OpenKh.Bbs
                             lba.Offset,
                             lba.Size,
                             fileName,
+                            "arc",
                             folder,
                             lba.Hash,
                             0);
                     }
                 }
 
-                foreach (var file in _directoryEntries)
+                for (int g = 0; g < _header.ResourceGroups.Length; g++)
                 {
-                    NameDictionary.TryGetValue(file.FileHash, out var fileName);
-                    NameDictionary.TryGetValue(file.DirectoryHash, out var folderName);
+                    string ext = "";
+                    if (g < KnownExtensions.Length)
+                    {
+                        ext = KnownExtensions[g];
+                    }
 
-                    yield return new Entry(
-                        this,
-                        file.Offset,
-                        file.Size,
-                        fileName,
-                        folderName,
-                        file.FileHash,
-                        file.DirectoryHash);
+                    foreach (var file in _header.ResourceGroups[g].Files)
+                    {
+                        NameDictionary.TryGetValue(file.FileHash, out var fileName);
+                        NameDictionary.TryGetValue(file.DirectoryHash, out var folderName);
+
+                        yield return new Entry(
+                            this,
+                            file.Offset,
+                            file.Size,
+                            fileName,
+                            ext,
+                            folderName,
+                            file.FileHash,
+                            file.DirectoryHash);
+                    } 
                 }
             }
         }
@@ -349,7 +394,7 @@ namespace OpenKh.Bbs
 
         public void PrintIndex()
         {
-            Console.WriteLine("Version {0} Arc Directories: {1} Arc Count: {2} Ext Group Count: {3} Ext File Count: {4}", _header.Version, _header.ArcDirectoryCount, _header.ArcRecordCount, _header.ExtDirectoryCount, _header.ExtFileCount);
+            Console.WriteLine("Version {0} Arc Directories: {1} Arc Count: {2} Rsrc Group Count: {3} Ext File Count: {4}", _header.Version, _header.ArcDirectoryCount, _header.ArcRecordCount, _header.RsrcGroupCount, _header.ExtFileCount);
             Console.WriteLine("#### ARCS ####");
             foreach (var arcDir in _header.Partitions)
             {
@@ -368,17 +413,22 @@ namespace OpenKh.Bbs
             Console.WriteLine("NYI");
 
             Console.WriteLine("#### LOOSE FILES ####");
-            foreach (var extFile in _directoryEntries)
+            for (int g = 0; g < _header.RsrcGroupCount; g++)
             {
-                if (!NameDictionary.TryGetValue(extFile.FileHash, out var fileName))
-                    fileName = "UNKNOWN_FILE";
-                if (!NameDictionary.TryGetValue(extFile.DirectoryHash, out string folderName))
+                Console.WriteLine("GROUP {0} : {1}", g, KnownExtensions[g]);
+                foreach (var extFile in _header.ResourceGroups[g].Files)
                 {
-                    folderName = CalculateFolderName(extFile.DirectoryHash);
-                    if (string.IsNullOrEmpty(folderName))
-                        folderName = "UNKNOWN_DIR";
+                    if (!NameDictionary.TryGetValue(extFile.FileHash, out var fileName))
+                        fileName = "UNKNOWN_FILE";
+                    fileName = string.Concat(fileName, ".", KnownExtensions[g]);
+                    if (!NameDictionary.TryGetValue(extFile.DirectoryHash, out string folderName))
+                    {
+                        folderName = CalculateFolderName(extFile.DirectoryHash);
+                        if (string.IsNullOrEmpty(folderName))
+                            folderName = "UNKNOWN_DIR";
+                    }
+                    Console.WriteLine("\tFILE {0:X04} : {1}, DIR {2:X04} : {3}", extFile.FileHash, fileName, extFile.DirectoryHash, folderName);
                 }
-                Console.WriteLine("FILE {0:X04} : {1}, DIR {2:X04} : {3}", extFile.FileHash, fileName, extFile.DirectoryHash, folderName);
             }
 
             Console.WriteLine("#### LINKS ####");

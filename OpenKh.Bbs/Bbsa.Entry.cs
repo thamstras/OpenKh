@@ -1,4 +1,4 @@
-﻿using OpenKh.Common;
+using OpenKh.Common;
 using System;
 using System.IO;
 using Xe.IO;
@@ -14,6 +14,7 @@ namespace OpenKh.Bbs
             private readonly int offset;
             private readonly int length;
             private readonly string fileName;
+            private readonly string ext;
             private readonly string folderName;
 
             internal Entry(
@@ -21,6 +22,7 @@ namespace OpenKh.Bbs
                 int offset,
                 int length,
                 string fileName,
+                string ext,
                 string folderName,
                 uint fileHash,
                 uint folderHash)
@@ -29,9 +31,14 @@ namespace OpenKh.Bbs
                 this.offset = offset;
                 this.length = length;
                 this.fileName = fileName;
+                this.ext = ext;
                 this.folderName = folderName;
                 FileHash = fileHash;
                 FolderHash = folderHash;
+                if (string.IsNullOrEmpty(ext) && fileName.Contains("."))
+                {
+                    this.ext = fileName.Substring(fileName.LastIndexOf(".") + 1);
+                }
             }
 
             public uint FileHash { get; }
@@ -45,7 +52,7 @@ namespace OpenKh.Bbs
                     return Name;
 
                 var stream = bbsaLoader(archiveIndex);
-                var extension = CalculateExtension(stream, physicalSector * SectorLength);
+                var extension = (string.IsNullOrEmpty(ext)) ? CalculateExtension(stream, physicalSector * SectorLength) : ext;
                 if (extension == null)
                     return Name;
 
