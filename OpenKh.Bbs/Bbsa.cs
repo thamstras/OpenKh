@@ -106,20 +106,20 @@ namespace OpenKh.Bbs
         {
             [Data] public int MagicCode { get; set; }
             [Data] public int Version { get; set; }
-            [Data] public short PartitionCount { get; set; }
-            [Data] public short Unk0a { get; set; }
-            [Data] public short Unk0c { get; set; }
-            [Data] public short DirectoryCount { get; set; }
-            [Data] public int PartitionOffset { get; set; }
-            [Data] public int DirectoryOffset { get; set; }
-            [Data] public short ArchivePartitionSector { get; set; }
+            [Data] public short ArcDirectoryCount { get; set; }
+            [Data] public short ArcRecordCount { get; set; }
+            [Data] public short ExtDirectoryCount { get; set; }
+            [Data] public short ExtFileCount { get; set; }
+            [Data] public int ArcRecordOffset { get; set; }
+            [Data] public int ExtFileOffset { get; set; }
+            [Data] public short LinkFileSector { get; set; }
             [Data] public short Archive0Sector { get; set; }
             [Data] public int TotalSectorCount { get; set; }
             [Data] public int Archive1Sector { get; set; }
             [Data] public int Archive2Sector { get; set; }
             [Data] public int Archive3Sector { get; set; }
             [Data] public int Archive4Sector { get; set; }
-            public Partition<PartitionFileEntry>[] Partitions { get; set; }
+            public Partition<ArcDirectoryEntry>[] Partitions { get; set; }
         }
 
         protected class ArchivePartitionHeader
@@ -152,12 +152,12 @@ namespace OpenKh.Bbs
         protected Bbsa(Stream stream)
         {
             _header = BinaryMapping.ReadObject<Header>(stream, (int)stream.Position);
-            _header.Partitions = ReadPartitions<PartitionFileEntry>(stream, 0x30, _header.PartitionCount);
-            ReadPartitionLba(_header.Partitions, stream, _header.PartitionOffset);
+            _header.Partitions = ReadPartitions<ArcDirectoryEntry>(stream, 0x30, _header.ArcDirectoryCount);
+            ReadPartitionLba(_header.Partitions, stream, _header.ArcRecordOffset);
 
-            stream.Position = _header.DirectoryOffset;
+            stream.Position = _header.ExtFileOffset;
             var reader = new BinaryReader(stream);
-            _directoryEntries = Enumerable.Range(0, _header.DirectoryCount)
+            _directoryEntries = Enumerable.Range(0, _header.ExtFileCount)
                     .Select(x => new DirectoryEntry
                     {
                         FileHash = reader.ReadUInt32(),
@@ -165,7 +165,7 @@ namespace OpenKh.Bbs
                         DirectoryHash = reader.ReadUInt32()
                     }).ToArray();
 
-            int header2Offset = _header.ArchivePartitionSector * 0x800;
+            int header2Offset = _header.LinkFileSector * 0x800;
             stream.Position = header2Offset;
             _header2 = BinaryMapping.ReadObject<ArchivePartitionHeader>(stream);
             _header2.Partitions = ReadPartitions<ArchivePartitionEntry>(stream, header2Offset + 8, _header2.PartitionCount);
