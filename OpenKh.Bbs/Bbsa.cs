@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -344,6 +345,62 @@ namespace OpenKh.Bbs
                 return (uint)hash;
 
             return uint.MaxValue;
+        }
+
+        public void PrintIndex()
+        {
+            Console.WriteLine("Version {0} Arc Directories: {1} Arc Count: {2} Ext Group Count: {3} Ext File Count: {4}", _header.Version, _header.ArcDirectoryCount, _header.ArcRecordCount, _header.ExtDirectoryCount, _header.ExtFileCount);
+            Console.WriteLine("#### ARCS ####");
+            foreach (var arcDir in _header.Partitions)
+            {
+                if (!Paths.TryGetValue(arcDir.Name, out string arcDirName))
+                    arcDirName = "UNKNOWN_ARC_DIR";
+                Console.WriteLine($"{arcDir.Name:X04} : {arcDirName}, {arcDir.Count} files");
+                foreach (var arcFile in arcDir.Lba)
+                {
+                    if (!NameDictionary.TryGetValue(arcFile.Hash, out var arcFileName))
+                        arcFileName = "UNKNOWN_ARC";
+                    Console.WriteLine($"\t{arcFileName}.arc");
+                }
+            }
+
+            Console.WriteLine("#### LOOSE GROUPS ####");
+            Console.WriteLine("NYI");
+
+            Console.WriteLine("#### LOOSE FILES ####");
+            foreach (var extFile in _directoryEntries)
+            {
+                if (!NameDictionary.TryGetValue(extFile.FileHash, out var fileName))
+                    fileName = "UNKNOWN_FILE";
+                if (!NameDictionary.TryGetValue(extFile.DirectoryHash, out string folderName))
+                {
+                    folderName = CalculateFolderName(extFile.DirectoryHash);
+                    if (string.IsNullOrEmpty(folderName))
+                        folderName = "UNKNOWN_DIR";
+                }
+                Console.WriteLine("FILE {0:X04} : {1}, DIR {2:X04} : {3}", extFile.FileHash, fileName, extFile.DirectoryHash, folderName);
+            }
+
+            Console.WriteLine("#### LINKS ####");
+            foreach (var linkDirectory in _header2.Partitions)
+            {
+                string arcDirName = "UNKNOWN_ARC_DIR";
+                Paths.TryGetValue(linkDirectory.Name, out arcDirName);
+                Console.WriteLine($"{linkDirectory.Name:X04} : {arcDirName}, {linkDirectory.Count} files");
+                foreach (var linkFile in linkDirectory.Lba)
+                {
+                    if (!NameDictionary.TryGetValue(linkFile.Hash, out var targetFileName))
+                        targetFileName = "UNKNOWN_FILE";
+                    Console.WriteLine("\t{0:X04} : {1}, {2} links, {3} unk", linkFile.Hash, targetFileName, linkFile.Count, linkFile.Unknown);
+                    foreach(var linkedFile in linkFile.UnknownItems)
+                    {
+                        
+                        if (!NameDictionary.TryGetValue(linkedFile.Hash, out var fileName))
+                            fileName = "UNKNOWN_FILE";
+                        Console.WriteLine("\t\tDir idx {0} {1:X04} : {2}", linkedFile.Unknown00, linkedFile.Hash, fileName);
+                    }
+                }
+            }
         }
     }
 }

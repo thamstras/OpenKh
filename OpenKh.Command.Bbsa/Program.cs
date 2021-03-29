@@ -10,7 +10,7 @@ namespace OpenKh.Command.Bbsa
 {
     [Command("OpenKh.Command.Bbsa")]
     [VersionOptionFromMember("--version", MemberName = nameof(GetVersion))]
-    [Subcommand(typeof(ExtractCommand), typeof(ListCommand))]
+    [Subcommand(typeof(ExtractCommand), typeof(ListCommand), typeof(InjectCommand), typeof(IndexCommand))]
     public class Program
     {
         static int Main(string[] args)
@@ -125,6 +125,107 @@ namespace OpenKh.Command.Bbsa
                 {
                     Console.WriteLine(file.Name);
                 }
+
+                return 0;
+            }
+        }
+
+        private class InjectCommand
+        {
+            [Required]
+            [DirectoryExists]
+            [Argument(0, Description = "Required. Path where the various BBSAx.DAT files are located")]
+            public string ArchivePath { get; set; }
+
+            [Required]
+            [FileExists]
+            [Argument(1, Description = "Required. The file to inject into the BBSA")]
+            public string SourceFile { get; set; }
+
+            [Required]
+            [Argument(2, Description = "Required. The file to replace inside the BBSA")]
+            public string TargetFile { get; set; }
+
+            [Option(CommandOptionType.SingleValue, Description = "Archive file name prefix. By default it is 'BBS'.", ShortName = "p", LongName = "prefix")]
+            public string ArchivePrefix { get; set; }
+
+            protected int OnExecute(CommandLineApplication app)
+            {
+                var prefix = ArchivePrefix ?? "BBS";
+
+                if (!DoesContainBbsa(ArchivePath, prefix))
+                    throw new ArchiveNotFoundException(ArchivePath, 0);
+
+                var bbsaFileNames = Enumerable.Range(0, 5)
+                    .Select(x => Path.Combine(ArchivePath, $"{prefix}{x}.DAT"));
+
+                var streams = bbsaFileNames
+                    .Select(x => File.Open(x, FileMode.Open))
+                    .ToArray();
+
+                var bbsa = Bbs.Bbsa.Read(streams[0]);
+
+                //var offset = bbsa.GetOffset(TargetFile);
+                //if (offset < 0)
+                //    throw new FileNotFoundException(null, TargetFile);
+
+                var targetDir = Path.GetDirectoryName(TargetFile);
+                var targetFileName = Path.GetFileNameWithoutExtension(TargetFile);
+                var targetEntry = Path.Combine(targetDir, targetFileName).Replace('\\', '/');
+                Bbs.Bbsa.Entry entry;
+                try
+                {
+                    entry = bbsa.Files.First(entry => {
+                        return entry.Name == targetEntry;
+                    });
+                }
+                catch (ArgumentNullException ex)
+                {
+                    throw new FileNotFoundException(null, TargetFile);
+                }
+
+                var outStream = entry.OpenStream(i => streams[i]);
+                using (var inStream = File.OpenRead(SourceFile))
+                {
+                    if (inStream.Length > outStream.Length)
+                    {
+                        Console.WriteLine("File is too big to inject, sorry.");
+                        return 1;
+                    }
+                    inStream.CopyTo(outStream);
+
+                    if (outStream.Position < outStream.Length)
+                    {
+                        // TODO: null out remaining?
+                    }
+                }
+
+                return 0;
+            }
+        }
+
+        private class IndexCommand
+        {
+            [Required]
+            [DirectoryExists]
+            [Argument(0, Description = "Required. Path where the various BBSAx.DAT files are located")]
+            public string ArchivePath { get; set; }
+
+            [Option(CommandOptionType.SingleValue, Description = "Archive file name prefix. By default it is 'BBS'.", ShortName = "p", LongName = "prefix")]
+            public string ArchivePrefix { get; set; }
+
+            protected int OnExecute(CommandLineApplication app)
+            {
+                var prefix = ArchivePrefix ?? "BBS";
+
+                if (!DoesContainBbsa(ArchivePath, prefix))
+                    throw new ArchiveNotFoundException(ArchivePath, 0);
+
+                var bbsaFileName = Path.Combine(ArchivePath, $"{prefix}{0}.DAT");
+                using var stream = File.OpenRead(bbsaFileName);
+                var bbsa = Bbs.Bbsa.Read(stream);
+
+                bbsa.PrintIndex();
 
                 return 0;
             }
