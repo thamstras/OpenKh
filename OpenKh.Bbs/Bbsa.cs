@@ -400,22 +400,19 @@ namespace OpenKh.Bbs
             {
                 if (!Paths.TryGetValue(arcDir.Name, out string arcDirName))
                     arcDirName = "UNKNOWN_ARC_DIR";
-                Console.WriteLine($"{arcDir.Name:X04} : {arcDirName}, {arcDir.Count} files");
+                Console.WriteLine($"ARC DIR {arcDir.Name:X04} : {arcDirName}, {arcDir.Count} files");
                 foreach (var arcFile in arcDir.Lba)
                 {
                     if (!NameDictionary.TryGetValue(arcFile.Hash, out var arcFileName))
                         arcFileName = "UNKNOWN_ARC";
-                    Console.WriteLine($"\t{arcFileName}.arc");
+                    Console.WriteLine($"\tARC {arcFile.Hash:X04} : {arcFileName}.arc");
                 }
             }
 
             Console.WriteLine("#### LOOSE GROUPS ####");
-            Console.WriteLine("NYI");
-
-            Console.WriteLine("#### LOOSE FILES ####");
             for (int g = 0; g < _header.RsrcGroupCount; g++)
             {
-                Console.WriteLine("GROUP {0} : {1}", g, KnownExtensions[g]);
+                Console.WriteLine("GROUP {0} : {1}, {2} files", g, KnownExtensions[g], _header.ResourceGroups[g].Count);
                 foreach (var extFile in _header.ResourceGroups[g].Files)
                 {
                     if (!NameDictionary.TryGetValue(extFile.FileHash, out var fileName))
@@ -434,8 +431,10 @@ namespace OpenKh.Bbs
             Console.WriteLine("#### LINKS ####");
             foreach (var linkDirectory in _header2.Partitions)
             {
-                string arcDirName = "UNKNOWN_ARC_DIR";
-                Paths.TryGetValue(linkDirectory.Name, out arcDirName);
+                if (!Paths.TryGetValue(linkDirectory.Name, out string arcDirName))
+                {
+                    arcDirName = CalculateFolderName(linkDirectory.Name);
+                }
                 Console.WriteLine($"{linkDirectory.Name:X04} : {arcDirName}, {linkDirectory.Count} files");
                 foreach (var linkFile in linkDirectory.Lba)
                 {
@@ -447,7 +446,7 @@ namespace OpenKh.Bbs
                         
                         if (!NameDictionary.TryGetValue(linkedFile.Hash, out var fileName))
                             fileName = "UNKNOWN_FILE";
-                        Console.WriteLine("\t\tDir idx {0} {1:X04} : {2}", linkedFile.Unknown00, linkedFile.Hash, fileName);
+                        Console.WriteLine("\t\tDir idx {0}, file {1:X04} : {2}", linkedFile.Unknown00, linkedFile.Hash, fileName);
                     }
                 }
             }
