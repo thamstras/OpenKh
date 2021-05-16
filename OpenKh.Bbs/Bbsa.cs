@@ -275,7 +275,6 @@ namespace OpenKh.Bbs
         private const int LbaLength = 8;
         protected readonly Header _header;
         protected readonly ArchivePartitionHeader _header2;
-        //protected readonly DirectoryEntry[] _directoryEntries;
 
         protected Bbsa(Stream stream)
         {
@@ -285,16 +284,6 @@ namespace OpenKh.Bbs
                 .Select(x => ResourceGroup.Read(stream)).ToArray();
             ReadPartitionLba(_header.Partitions, stream, _header.ArcRecordOffset);
             ReadResourceGroupFiles(_header.ResourceGroups, stream, _header.ExtFileOffset);
-
-            /*stream.Position = _header.ExtFileOffset;
-            var reader = new BinaryReader(stream);
-            _directoryEntries = Enumerable.Range(0, _header.ExtFileCount)
-                    .Select(x => new DirectoryEntry
-                    {
-                        FileHash = reader.ReadUInt32(),
-                        Info = reader.ReadUInt32(),
-                        DirectoryHash = reader.ReadUInt32()
-                    }).ToArray();*/
 
             int header2Offset = _header.LinkFileSector * 0x800;
             stream.Position = header2Offset;
