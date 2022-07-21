@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 
 namespace OpenKh.Common
@@ -31,5 +32,10 @@ namespace OpenKh.Common
             new YamlDotNet.Serialization.Serializer().Serialize(obj);
         public static T YamlDeserialize<T>(string content) =>
             new YamlDotNet.Serialization.Deserializer().Deserialize<T>(content);
+
+        public static bool ByteArrayCompare(ReadOnlySpan<byte> a1, ReadOnlySpan<byte> a2)
+        {
+            return a1.SequenceEqual(a2);
+        }
     }
 }
