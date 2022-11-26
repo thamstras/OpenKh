@@ -10,7 +10,7 @@ using OpenKh.Common.Exceptions;
 
 namespace OpenKh.Ddd
 {
-    public class Rbin
+    public partial class Rbin
     {
         private const int MagicCode = 0x52415243;
 
@@ -35,6 +35,7 @@ namespace OpenKh.Ddd
             public bool IsCompressed { get => (Info & 0x80000000) != 0; }
 
             public string Name { get; set; }
+            public string FullPath => HashPathMap.TryGetValue(Hash, out var path) ? path.FirstOrDefault(p => Path.GetFileName(p) == this.Name, string.Empty) : string.Empty;
 
             public static TocEntry Read(Stream stream)
             {

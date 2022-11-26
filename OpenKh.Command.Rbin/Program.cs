@@ -90,8 +90,6 @@ namespace OpenKh.Command.Rbin
 
                 var rbinStream = File.OpenRead(RbinFilePath);
                 var rbin = Ddd.Rbin.Read(rbinStream);
-                // TODO: If we knew the hash algorithm this would be a binary search not a linear
-                //      one as the toc entries are sorted by hash.
                 var tocEntry = rbin.TOC.Find(f => f.Name == Target);
                 if (tocEntry == null)
                 {
@@ -100,7 +98,7 @@ namespace OpenKh.Command.Rbin
                 }
 
                 Directory.CreateDirectory(OutputFolder);
-                ExtractFile(rbinStream, tocEntry, OutputFolder);
+                ExtractFile(rbinStream, tocEntry, "", OutputFolder, out string wrotePath, true);
 
                 return 0;
             }
@@ -124,10 +122,9 @@ namespace OpenKh.Command.Rbin
 
                 var rbinStream = File.OpenRead(RbinFilePath);
                 var rbin = Ddd.Rbin.Read(rbinStream);
-                Directory.CreateDirectory(OutputFolder);
                 foreach (var tocEntry in rbin.TOC)
                 {
-                    ExtractFile(rbinStream, tocEntry, OutputFolder);
+                    ExtractFile(rbinStream, tocEntry, "", OutputFolder, out string wrotePath);
                     Console.WriteLine($"Wrote {Path.Combine(OutputFolder, tocEntry.Name)}");
                 }
 
@@ -148,31 +145,53 @@ namespace OpenKh.Command.Rbin
             protected int OnExecute(CommandLineApplication app)
             {
                 Directory.CreateDirectory(DstFolder);
+                UnpackReport report = new UnpackReport();
+
                 using (var vfsStream = File.CreateText(Path.Combine(DstFolder, "@vfs.txt")))
                 {
                     var rbinList = Directory.EnumerateFiles(SrcFolder, "*.rbin", SearchOption.TopDirectoryOnly).ToList();
                     Console.WriteLine($"Found {rbinList.Count} rbins");
+                    
                     System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    
                     int filecount = 0;
                     List<string> issueFiles = new List<string>();
                     foreach (var rbinPath in rbinList)
                     {
+                        report.inputFiles.Add(rbinPath);
+                        string rbinName = Path.GetFileName(rbinPath);
+                        
                         using (var rbinStream = File.OpenRead(rbinPath))
                         {
                             var rbin = Ddd.Rbin.Read(rbinStream);
+
                             vfsStream.WriteLine($"{Path.GetFileName(rbinPath)} => {rbin.MountPath}");
-                            string fullMountPath = Path.Combine(DstFolder, rbin.MountPath);
-                            Directory.CreateDirectory(fullMountPath);
-                            Console.WriteLine($"{Path.GetFileName(rbinPath)} => {fullMountPath}");
+                            report.rbinMountPaths.Add(rbinName, rbin.MountPath);
+                            report.rbinFileCounts.Add(rbinName, 0);
+                            report.rbinFileMap.Add(rbinName, new List<string>());
+                            
                             foreach (var tocEntry in rbin.TOC)
                             {
-                                if (ExtractFile(rbinStream, tocEntry, fullMountPath))
+                                if (ExtractFile(rbinStream, tocEntry, rbin.MountPath, DstFolder, out string wrotePath))
                                 {
-                                    Console.WriteLine($"\tWrote {Path.Combine(fullMountPath, tocEntry.Name)}");
+                                    Console.WriteLine($"\tWrote {wrotePath}");
+                                    
+                                    report.rbinFileCounts[rbinName]++;
+                                    report.rbinFileMap[rbinName].Add(tocEntry.FullPath != string.Empty ? tocEntry.FullPath : tocEntry.Name);
+                                    
+                                    string fileType = Path.GetExtension(wrotePath).ToLower();
+                                    if (!report.fileTypeCounts.ContainsKey(fileType))
+                                    {
+                                        report.fileTypeCounts.Add(fileType, 0);
+                                        report.CompressedFileTypeCounts.Add(fileType, 0);
+                                    }
+                                    report.fileTypeCounts[fileType]++;
+                                    if (tocEntry.IsCompressed)
+                                        report.CompressedFileTypeCounts[fileType]++;
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"\tFailed to write {Path.Combine(fullMountPath, tocEntry.Name)}");
+                                    Console.WriteLine($"\tFailed to write {Path.Combine(wrotePath, tocEntry.Name)}");
                                     issueFiles.Add(Path.Combine(Path.GetFileName(rbinPath), tocEntry.Name));
                                 }
                             }
@@ -195,15 +214,29 @@ namespace OpenKh.Command.Rbin
                     }
                 }
 
+                using (var reportStream = File.CreateText(Path.Combine(DstFolder, "report.json")))
+                {
+                    string jsonTxt = System.Text.Json.JsonSerializer.Serialize<UnpackReport>(report);
+                    reportStream.Write(jsonTxt);
+                    Console.WriteLine("Wrote unpack report.");
+                }
+
                 return 0;
             }
         }
         
-        private static bool ExtractFile(FileStream stream, Ddd.Rbin.TocEntry tocEntry, string outputFolder)
+        private static bool ExtractFile(FileStream stream, Ddd.Rbin.TocEntry tocEntry, string mountPath, string basePath, out string dstPath, bool ignoreTocPath = false)
         {
             try
             {
-                var outPath = Path.Combine(outputFolder, tocEntry.Name);
+                var filePath = tocEntry.FullPath;
+                if (string.IsNullOrEmpty(filePath) || ignoreTocPath)
+                {
+                    filePath = Path.Combine(mountPath, tocEntry.Name);
+                }
+                var outPath = Path.Combine(basePath, filePath);
+                dstPath = outPath;
+                Directory.CreateDirectory(Path.GetDirectoryName(outPath));
 
                 stream.Seek(tocEntry.Offset, SeekOrigin.Begin);
                 if (tocEntry.IsCompressed)
@@ -222,8 +255,22 @@ namespace OpenKh.Command.Rbin
             catch (Exception ex)
             {
                 Console.WriteLine($"EXCEPTION: {ex.Message}");
+                dstPath = string.Empty;
                 return false;
             }
         }
+
+        private class UnpackReport
+        {
+            public List<string> inputFiles= new List<string>();
+            
+            public Dictionary<string, int> rbinFileCounts = new Dictionary<string, int>();
+            public Dictionary<string, string> rbinMountPaths = new Dictionary<string, string>();
+            public Dictionary<string, List<string>> rbinFileMap = new Dictionary<string, List<string>>();
+            
+            public Dictionary<string, int> fileTypeCounts = new Dictionary<string, int>();
+            public Dictionary<string, int> CompressedFileTypeCounts = new Dictionary<string, int>();
+        }
+
     }
 }
