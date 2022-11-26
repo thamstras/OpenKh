@@ -158,7 +158,7 @@ namespace OpenKh.Command.Rbin
                     List<string> issueFiles = new List<string>();
                     foreach (var rbinPath in rbinList)
                     {
-                        report.inputFiles.Add(rbinPath);
+                        report.InputFiles.Add(rbinPath);
                         string rbinName = Path.GetFileName(rbinPath);
                         
                         using (var rbinStream = File.OpenRead(rbinPath))
@@ -166,9 +166,9 @@ namespace OpenKh.Command.Rbin
                             var rbin = Ddd.Rbin.Read(rbinStream);
 
                             vfsStream.WriteLine($"{Path.GetFileName(rbinPath)} => {rbin.MountPath}");
-                            report.rbinMountPaths.Add(rbinName, rbin.MountPath);
-                            report.rbinFileCounts.Add(rbinName, 0);
-                            report.rbinFileMap.Add(rbinName, new List<string>());
+                            report.RbinMountPaths.Add(rbinName, rbin.MountPath);
+                            report.RbinFileCounts.Add(rbinName, 0);
+                            report.RbinFileMap.Add(rbinName, new List<string>());
                             
                             foreach (var tocEntry in rbin.TOC)
                             {
@@ -176,16 +176,16 @@ namespace OpenKh.Command.Rbin
                                 {
                                     Console.WriteLine($"\tWrote {wrotePath}");
                                     
-                                    report.rbinFileCounts[rbinName]++;
-                                    report.rbinFileMap[rbinName].Add(tocEntry.FullPath != string.Empty ? tocEntry.FullPath : tocEntry.Name);
+                                    report.RbinFileCounts[rbinName]++;
+                                    report.RbinFileMap[rbinName].Add(tocEntry.FullPath != string.Empty ? tocEntry.FullPath : tocEntry.Name);
                                     
                                     string fileType = Path.GetExtension(wrotePath).ToLower();
-                                    if (!report.fileTypeCounts.ContainsKey(fileType))
+                                    if (!report.FileTypeCounts.ContainsKey(fileType))
                                     {
-                                        report.fileTypeCounts.Add(fileType, 0);
+                                        report.FileTypeCounts.Add(fileType, 0);
                                         report.CompressedFileTypeCounts.Add(fileType, 0);
                                     }
-                                    report.fileTypeCounts[fileType]++;
+                                    report.FileTypeCounts[fileType]++;
                                     if (tocEntry.IsCompressed)
                                         report.CompressedFileTypeCounts[fileType]++;
                                 }
@@ -232,6 +232,7 @@ namespace OpenKh.Command.Rbin
                 var filePath = tocEntry.FullPath;
                 if (string.IsNullOrEmpty(filePath) || ignoreTocPath)
                 {
+                    Console.Error.WriteLine($"HASH MISS: {tocEntry.Hash:X8} {tocEntry.Name}");
                     filePath = Path.Combine(mountPath, tocEntry.Name);
                 }
                 var outPath = Path.Combine(basePath, filePath);
@@ -262,14 +263,14 @@ namespace OpenKh.Command.Rbin
 
         private class UnpackReport
         {
-            public List<string> inputFiles= new List<string>();
+            public List<string> InputFiles { get; set; } = new();
             
-            public Dictionary<string, int> rbinFileCounts = new Dictionary<string, int>();
-            public Dictionary<string, string> rbinMountPaths = new Dictionary<string, string>();
-            public Dictionary<string, List<string>> rbinFileMap = new Dictionary<string, List<string>>();
+            public Dictionary<string, int> RbinFileCounts { get; set; } = new();
+            public Dictionary<string, string> RbinMountPaths { get; set; } = new();
+            public Dictionary<string, List<string>> RbinFileMap { get; set; } = new();
             
-            public Dictionary<string, int> fileTypeCounts = new Dictionary<string, int>();
-            public Dictionary<string, int> CompressedFileTypeCounts = new Dictionary<string, int>();
+            public Dictionary<string, int> FileTypeCounts { get; set; } = new();
+            public Dictionary<string, int> CompressedFileTypeCounts { get; set; } = new();
         }
 
     }
