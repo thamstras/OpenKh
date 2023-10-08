@@ -212,6 +212,8 @@ namespace OpenKh.Command.Rbin
                     {
                         Console.WriteLine("Zero errors detected.");
                     }
+
+                    Console.WriteLine($"Encounted {MissedHashes.Count} Hash misses. [{MissedHashes.Count}/{filecount}] ({(MissedHashes.Count / (double)filecount) * 100.0D}%)");
                 }
 
                 using (var reportStream = File.CreateText(Path.Combine(DstFolder, "report.json")))
@@ -225,14 +227,21 @@ namespace OpenKh.Command.Rbin
             }
         }
         
+        static HashSet<string> MissedHashes { get; set; } = new HashSet<string>();
+
         private static bool ExtractFile(FileStream stream, Ddd.Rbin.TocEntry tocEntry, string mountPath, string basePath, out string dstPath, bool ignoreTocPath = false)
         {
             try
             {
                 var filePath = tocEntry.FullPath;
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    string hashDesc = $"{tocEntry.Hash:X8} {mountPath} {tocEntry.Name}";
+                    MissedHashes.Add(hashDesc);
+                    Console.Error.WriteLine($"HASH MISS: {hashDesc}");
+                }
                 if (string.IsNullOrEmpty(filePath) || ignoreTocPath)
                 {
-                    Console.Error.WriteLine($"HASH MISS: {tocEntry.Hash:X8} {tocEntry.Name}");
                     filePath = Path.Combine(mountPath, tocEntry.Name);
                 }
                 var outPath = Path.Combine(basePath, filePath);
