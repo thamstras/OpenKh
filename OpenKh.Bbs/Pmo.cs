@@ -15,6 +15,7 @@ namespace OpenKh.Bbs
         private static readonly IBinaryMapping Mapping =
            MappingConfiguration.DefaultConfiguration()
                .ForTypeMatrix4x4()
+               .ForTypeVector4()
                .Build();
 
         private const UInt32 MagicCode = 0x4F4D50;
@@ -35,21 +36,23 @@ namespace OpenKh.Bbs
             [Data] public ushort VertexCount { get; set; }
             [Data] public float ModelScale { get; set; }
             [Data] public UInt32 MeshOffset1 { get; set; }
-            [Data(Count = 32)] public float[] BoundingBox { get; set; }
+            [Data(Count = 8)] public Vector4[] BoundingBox { get; set; }
         }
 
         public class TextureInfo
         {
             [Data] public UInt32 TextureOffset { get; set; }
             [Data(Count = 12)] public string TextureName { get; set; }
-            [Data(Count = 4)] public UInt32[] Unknown { get; set; }
+            [Data] public float ScrollSpdU { get; set; }
+            [Data] public float ScrollSpdV { get; set; }
+            [Data(Count = 2)] public UInt32[] Padding { get; set; }
         }
 
         public class MeshSection
         {
             [Data] public ushort VertexCount { get; set; }
             [Data] public byte TextureID { get; set; }
-            [Data] public byte VertexSize { get; set; } // In bytes.
+            [Data] public byte VertexSize { get; set; } // In bytes.    // TODO: Rename to Stride
             [Data] public UInt32 VertexFlags { get; set; }
             [Data] public byte Group { get; set; }
             [Data] public byte TriangleStripCount { get; set; }
