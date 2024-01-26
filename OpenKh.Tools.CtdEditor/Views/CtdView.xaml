@@ -41,11 +41,14 @@
             <Grid Grid.Row="2" Margin="0 5 0 5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="3"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Image Grid.Column="0" Source="{StaticResource Search_16x}"/>
-                <TextBox Grid.Column="2"
+                <Button Grid.Column="0" Name="AddMsgBtn" Content="Add Msg" Command="{Binding AddCommand}" />
+                <Image Grid.Column="2" Source="{StaticResource Search_16x}"/>
+                <TextBox Grid.Column="4"
                     Text="{Binding SearchTerm, UpdateSourceTrigger=PropertyChanged}"/>
             </Grid>
         </Grid>
