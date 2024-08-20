@@ -12,7 +12,7 @@
         <ProjectReference Include="..\OpenKh.Engine\OpenKh.Engine.csproj" />
         <ProjectReference Include="..\OpenKh.Engine.MonoGame\OpenKh.Engine.MonoGame.csproj" />
         <ProjectReference Include="..\OpenKh.Game\OpenKh.Game.csproj" />
-        <PackageReference Include="AssimpNet" Version="5.0.0-beta1" />
+        <PackageReference Include="StirlingLabs.Assimp.Net" Version="23.4.1" />
     </ItemGroup>
 
 </Project>
