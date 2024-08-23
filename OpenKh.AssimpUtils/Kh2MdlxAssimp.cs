@@ -115,7 +115,7 @@ namespace OpenKh.AssimpUtils
                                                                     new Vector3(bone.RotationX, bone.RotationY, bone.RotationZ),
                                                                     new Vector3(bone.TranslationX, bone.TranslationY, bone.TranslationZ));
                 
-                matricesToReverse.Add(AssimpGeneric.ToXna(boneNode.Transform));
+                matricesToReverse.Add(boneNode.Transform.ToXna());
                 matricesToReverseNames.Add(boneName);
 
                 parentNode.Children.Add(boneNode);
@@ -127,7 +127,7 @@ namespace OpenKh.AssimpUtils
             {
                 foreach (Assimp.Bone bone in mesh.Bones)
                 {
-                    bone.OffsetMatrix = AssimpGeneric.ToAssimp(Microsoft.Xna.Framework.Matrix.Invert(matricesToReverse[matricesToReverseNames.IndexOf(bone.Name)]));
+                    bone.OffsetMatrix = Microsoft.Xna.Framework.Matrix.Invert(matricesToReverse[matricesToReverseNames.IndexOf(bone.Name)]).ToAssimp();
                 }
             }
 
@@ -285,7 +285,7 @@ namespace OpenKh.AssimpUtils
             {
                 VifCommon.VifVertex vertex = new VifCommon.VifVertex();
 
-                vertex.AbsolutePosition = AssimpGeneric.ToNumerics(mesh.Vertices[i]);
+                vertex.AbsolutePosition = mesh.Vertices[i].ToSystem();
 
                 short u = (short)(mesh.TextureCoordinateChannels[0][i].X * 4096.0f);
                 short v = (short)((1 - mesh.TextureCoordinateChannels[0][i].Y) * 4096.0f);
@@ -431,7 +431,7 @@ namespace OpenKh.AssimpUtils
                         currentFrameBoneMatrix *= invertedParent;
                     }
 
-                    Assimp.Matrix4x4 assimpMatrix = AssimpGeneric.ToAssimp(currentFrameBoneMatrix);
+                    Assimp.Matrix4x4 assimpMatrix = currentFrameBoneMatrix.ToAssimp();
                     assimpMatrix.Decompose(out Assimp.Vector3D scaling, out Assimp.Quaternion rotation, out Assimp.Vector3D translation);
 
                     Assimp.VectorKey positionKey = new Assimp.VectorKey(keyTime / assimpAnimation.TicksPerSecond, translation);

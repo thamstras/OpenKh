@@ -179,6 +179,21 @@ namespace OpenKh.Tools.KhModels.View
                                 {
                                     MtModel model = PmoProcessor.GetMtModel(pmoModel);
                                     model.Name = "Model" + i.ToString("D4");
+                                    System.Numerics.Matrix4x4 modelTransformation = pmpModel.objectInfo[i].GetTransform();
+                                    foreach (MtMesh mesh in model.Meshes)
+                                    {
+                                        foreach (MtVertex vertex in mesh.Vertices)
+                                        {
+                                            vertex.AbsolutePosition = Vector3.Transform(vertex.AbsolutePosition.Value, modelTransformation);
+                                        }
+                                        if (pmpModel.objectInfo[i].ShouldMirrorFaces())
+                                        {
+                                            foreach (MtFace face in mesh.Faces)
+                                            {
+                                                face.Clockwise = !face.Clockwise;
+                                            }
+                                        }
+                                    }
                                     mtModels.Add(model);
                                 }
                             }

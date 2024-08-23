@@ -79,18 +79,11 @@ namespace OpenKh.Ddd
 
             public Matrix4x4 GetTransformationMatrix()
             {
-                Vector3 scale = new Vector3(ScaleX, ScaleY, ScaleZ);
-                Vector3 translation = new Vector3(PositionX, PositionY, PositionZ);
-                Matrix4x4 scaleMatrix = Matrix4x4.CreateScale(scale);
-                Matrix4x4 rotationMatrix;
-                Matrix4x4 rotationMatrixX = Matrix4x4.CreateRotationX(RotationX);
-                Matrix4x4 rotationMatrixY = Matrix4x4.CreateRotationY(RotationY);
-                Matrix4x4 rotationMatrixZ = Matrix4x4.CreateRotationZ(RotationZ);
-                rotationMatrix = rotationMatrixZ * rotationMatrixY * rotationMatrixX;
-                Matrix4x4 translationMatrix = Matrix4x4.CreateTranslation(translation);
-
-                Matrix4x4 AbsoluteTransformationMatrix = scaleMatrix * rotationMatrix * translationMatrix;
-                return AbsoluteTransformationMatrix;
+                var translation = Matrix4x4.CreateTranslation(new Vector3(PositionX, PositionY, PositionZ));
+                var rotation = Matrix4x4.CreateFromYawPitchRoll(RotationY, RotationX, RotationZ);
+                var scale = Matrix4x4.CreateScale(ScaleX / 100.0f, ScaleY / 100.0f, ScaleZ / 100.0f);
+                var transform = scale * rotation * translation;
+                return transform;
             }
 
             public bool ShouldMirrorFaces()

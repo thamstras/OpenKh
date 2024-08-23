@@ -37,5 +37,13 @@ namespace OpenKh.AssimpUtils
 
         public static Assimp.Color4D ToAssimpC4(this System.Drawing.Color c)
             => new Assimp.Color4D(c.R, c.G, c.B, c.A);
+
+        // TODO: MOVE THESE TO A SEPARATE LIB SO WE CAN DROP THE -WINDOWS AND ALSO THE DEPENDENCY ON ENGINE.MONOGAME!
+
+        public static Microsoft.Xna.Framework.Matrix ToXna(this Assimp.Matrix4x4 m)
+            => new Microsoft.Xna.Framework.Matrix(m.A1, m.B1, m.C1, m.D1, m.A2, m.B2, m.C2, m.D2, m.A3, m.B3, m.C3, m.D3, m.A4, m.B4, m.C4, m.D4);
+
+        public static Assimp.Matrix4x4 ToAssimp(this Microsoft.Xna.Framework.Matrix m)
+            => new Assimp.Matrix4x4(m.M11, m.M21, m.M31, m.M41, m.M12, m.M22, m.M32, m.M42, m.M13, m.M23, m.M33, m.M43, m.M14, m.M24, m.M34, m.M44);
     }
 }

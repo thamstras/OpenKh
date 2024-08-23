@@ -178,7 +178,7 @@ namespace OpenKh.Tools.Kh2MdlxEditor.Utils
                 }
                 //Else 0 or 1
 
-                Matrix4x4 transform = AssimpGeneric.ToNumerics(assimpBones[i].Transform);
+                Matrix4x4 transform = assimpBones[i].Transform.ToSystem();
 
                 DecomposeEuler(transform, out Vector3 scale, out Vector3 rotation, out Vector3 position);
 

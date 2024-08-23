@@ -49,10 +49,10 @@ namespace OpenKh.Tools.KhModels.BBS
 
                     vertex.AbsolutePosition = pmoMesh.vertices[j];
                     vertex.AbsolutePosition *= pmo.header.ModelScale;
-
                     vertex.TextureCoordinates = new Vector3(pmoMesh.textureCoordinates[j].X, 1 - pmoMesh.textureCoordinates[j].Y, 1);
+                    vertex.Color = pmoMesh.colors[j];
 
-                    if(pmoMesh.jointWeights.Count > 0)
+                    if (pmoMesh.jointWeights.Count > 0)
                     {
                         for (int k = 0; k < pmoMesh.jointWeights[j].weights.Count; k++)
                         {

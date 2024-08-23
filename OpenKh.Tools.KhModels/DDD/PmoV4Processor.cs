@@ -113,6 +113,7 @@ namespace OpenKh.Tools.KhModels.DDD
                     vertex.AbsolutePosition = new Vector3(pmoVertex.PositionX, pmoVertex.PositionY, pmoVertex.PositionZ);
                     vertex.AbsolutePosition *= pmo.Header.ModelScale;
                     vertex.TextureCoordinates = new Vector3(pmoVertex.TexCoordU, 1 - pmoVertex.TexCoordV, 1);
+                    vertex.Color = new Vector4(pmoVertex.ColorR, pmoVertex.ColorG, pmoVertex.ColorB, pmoVertex.ColorA);
 
                     if(pmoVertex.VWeight != null)
                     {
